@@ -1,4 +1,3 @@
-
 import {Vector2} from "./Vector2";
 import {distance, inBounds} from "./utils";
 import {drawLine, drawReact} from "./Canvas";
@@ -37,15 +36,15 @@ const CONFIG = {
             START: true,
             END: true,
             PATH: true,
-            COORDS: false,
+            COORDS: true,
         }
     },
 
     // DEBUG
     DEBUG: {
-        STARTING_POSITION: false,
-        ENDING_POSITION: false,
-        MAP_WALL: false,
+        STARTING_POSITION: true,
+        ENDING_POSITION: true,
+        MAP_WALL: true,
     },
 }
 
@@ -86,13 +85,13 @@ const INIT = () => {
     ctx.canvas.height = CANVAS.HEIGHT
 
     // DEBUG: MANUALLY SET START AND END POS
-    if (CONFIG.DEBUG.STARTING_POSITION) START.update(1, 7)
-    if (CONFIG.DEBUG.ENDING_POSITION) END.update(5, 7)
+    if (CONFIG.DEBUG.STARTING_POSITION) START.update(11, 13)
+    if (CONFIG.DEBUG.ENDING_POSITION) END.update(7, 10)
 
     // DEBUG: MANUALLY PUT A LINE OF WALLS ON THE MAP
     if (CONFIG.DEBUG.MAP_WALL) {
         for (let i = 0; i < 10; i++) {
-            MAP[3][i + 5] = 1
+            MAP[9][i + 5] = 1
         }
     }
 
@@ -175,19 +174,69 @@ const INIT = () => {
     // TODO: Use Collection/Map for the paths
     const PATH: Vector2[] = []
 
+    ctx.save()
+    ctx.font = `${1.5 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
+    // A* algorithm for pathfinding from start to finish
+    let nodes = AStar(START.clone(), END.clone())
+    console.log(nodes)
+
+
+    Array.from(nodes.keys()).forEach(node => {
+        if (CONFIG.DRAW.A_STAR.PATH) {
+            ctx.save()
+            ctx.fillStyle = 'rgba(142,142,142,0.1)'
+            drawReact(ctx, node.clone().scale(CELL.DIMENSIONS), CELL.DIMENSIONS)
+            ctx.restore()
+        }
+
+        // DEBUG: Display the cell position and distance to end
+        if (CONFIG.DRAW.A_STAR.COORDS) {
+            ctx.save()
+            ctx.font = `${1.7 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
+            ctx.fillStyle = '#bbbbbb'
+            let x_pos = node.x * CELL.WIDTH + (CELL.WIDTH / 10)
+            let y_pos = node.y * CELL.HEIGHT + (CELL.HEIGHT / 2)
+            ctx.fillText(`(${node.x}, ${node.y})`, x_pos, y_pos, CELL.WIDTH);
+            ctx.restore()
+        }
+    })
+
+    ctx.restore()
+}
+
+const AStar = (start: Vector2, end: Vector2) => {
     // Safe bounds to ensure no infinite loops occur
     let current_checks = 0;
     const MAX_CHECKS = GRID.COLS * GRID.ROWS
 
-    ctx.save()
-    ctx.font = `${1.5 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
+    let previous_pivot = start.clone()
+    let pivot = start.clone()
+    let pivots = new Map<Vector2, number>()
+    let path = new Map<Vector2, number>()
+
+    const nodePreviouslyChecked = (pos: Vector2): boolean => {
+        let exists = false;
+        Array.from(pivots.keys()).forEach((pivot) => {
+            if (pivot.equals(pos)) {
+                exists = true
+            }
+        })
+        return exists
+    }
+
+    const nodeExistsOnPath = (pos: Vector2): boolean => {
+        let exists = false;
+        Array.from(path.keys()).forEach((pivot) => {
+            if (pivot.equals(pos)) {
+                exists = true
+            }
+        })
+        return exists
+    }
 
     // A* algorithm for pathfinding from start to finish
     while (current_checks < MAX_CHECKS) {
-        // TODO: Use Priority Queue
-        let min_dist = Infinity
-        let possible_pivot: Vector2 | null = null
-
+        console.log(`Iteration: ${current_checks}, current pivot (${pivot.toString()})`)
         // Check surrounding cells in a 3x3 grid around the pivot
         for (let col = pivot.x - 1; col <= pivot.x + 1; col++) {
             // If the column is out of bounds, skip the check
@@ -203,46 +252,39 @@ const INIT = () => {
                 // If the cell is a wall skip
                 if (MAP[col][row] == 1) continue;
 
-                // Get the distance from checked cell to the end
-                let dist = distance(new Vector2(col, row), END)
+                // Skip cell if the cell has already been checked
+                if (nodePreviouslyChecked(new Vector2(col, row))) continue
 
-                // If a smaller distance exists, that cell is closer to end
-                if (dist < min_dist) {
-                    min_dist = dist
-                    possible_pivot = new Vector2(col, row)
-                }
+                // Get the distance from checked cell to the end
+                let dist = distance(new Vector2(col, row), end)
+
+                // Store the cell in a map
+                pivots.set(new Vector2(col, row), dist)
             }
         }
 
-        // Increment the number of cells being checked
         current_checks++
 
-        // If no pivot was found check again
-        if (!possible_pivot) continue
+        let min_distance = Infinity
+        let min_pivot = null
+        const sorted_entries = Array.from(pivots.entries()).sort((a, b) => a[1] - b[1])
+        sorted_entries.forEach(([key, value]) => {
+            if (nodeExistsOnPath(key)) return
+            if (value < min_distance) {
+                min_distance = value
+                min_pivot = key
+            }
+        })
 
-        // If a pivot was found, but has reached the end of the algorithm break out of the loop
-        if (possible_pivot.equals(END)) break
+        if (!min_pivot) continue
+        if (pivot.equals(end)) break
 
-        // DEBUG: Display the cell position and distance to end
-        if (CONFIG.DRAW.A_STAR.COORDS) {
-            let x_pos = possible_pivot.x * CELL.WIDTH + (CELL.WIDTH / 6)
-            let y_pos = possible_pivot.y * CELL.HEIGHT + (CELL.HEIGHT / 2)
-            ctx.fillText(`(${possible_pivot.x}, ${possible_pivot.y})`, x_pos, y_pos, CELL.WIDTH);
-        }
-
-        // If a pivot was found
-        pivot = possible_pivot
-        PATH.push(pivot)
-
-        if (CONFIG.DRAW.A_STAR.PATH) {
-            ctx.save()
-            ctx.fillStyle = '#555555'
-            const top_left = Vector2.from(pivot).scale(CELL.DIMENSIONS)
-            drawReact(ctx, top_left, CELL.DIMENSIONS)
-            ctx.restore()
-        }
+        previous_pivot = pivot
+        pivot = min_pivot
+        path.set(min_pivot, min_distance)
     }
-    ctx.restore()
+
+    return path
 }
 
 (() => {

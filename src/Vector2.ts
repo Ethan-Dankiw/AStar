@@ -45,4 +45,8 @@ export class Vector2 {
         this.x = x
         this.y = y
     }
+
+    public toString(): string {
+        return `${this.x}, ${this.y}`
+    }
 }
