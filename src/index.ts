@@ -1,5 +1,5 @@
 import {Vector2} from "./Vector2";
-import {distance, inBounds} from "./utils";
+import {distance, inBounds, randomNumber} from "./utils";
 import {drawLine, drawReact} from "./Canvas";
 
 // Define properties of the HTML canvas
@@ -29,7 +29,7 @@ CELL.DIMENSIONS.update(CELL.WIDTH, CELL.HEIGHT);
 // Define global config values
 const CONFIG = {
     DRAW: {
-        GRID: true,
+        GRID: false,
         BACKGROUND: true,
         MAP: true,
         A_STAR: {
@@ -44,7 +44,11 @@ const CONFIG = {
     DEBUG: {
         STARTING_POSITION: true,
         ENDING_POSITION: true,
-        MAP_WALL: true,
+        WALL: {
+            RANDOM: false,
+            ZIG_ZAG: true,
+            SEMI_BOX: false,
+        }
     },
 }
 
@@ -85,15 +89,68 @@ const INIT = () => {
     ctx.canvas.height = CANVAS.HEIGHT
 
     // DEBUG: MANUALLY SET START AND END POS
-    if (CONFIG.DEBUG.STARTING_POSITION) START.update(11, 13)
-    if (CONFIG.DEBUG.ENDING_POSITION) END.update(7, 10)
+    if (CONFIG.DEBUG.STARTING_POSITION) START.update(0, 0)
+    if (CONFIG.DEBUG.ENDING_POSITION) END.update(8, 12)
 
-    // DEBUG: MANUALLY PUT A LINE OF WALLS ON THE MAP
-    if (CONFIG.DEBUG.MAP_WALL) {
-        for (let i = 0; i < 10; i++) {
-            MAP[9][i + 5] = 1
+    if (CONFIG.DEBUG.WALL.SEMI_BOX) {
+        for (let i = 0; i < GRID.ROWS / 2 + 5; i++) {
+            MAP[5][i] = 1
+        }
+        for (let i = 5; i < GRID.ROWS / 2; i++) {
+            MAP[i][14] = 1
+        }
+        for (let i = 2; i < GRID.ROWS / 2 + 5; i++) {
+            MAP[10][i] = 1
         }
     }
+
+    // DEBUG: MANUALLY PUT A LINE OF WALLS ON THE MAP
+    if (CONFIG.DEBUG.WALL.ZIG_ZAG) {
+        for (let i = 0; i < GRID.ROWS - 1; i++) {
+            MAP[1][i] = 1
+        }
+        for (let i = 1; i < GRID.ROWS; i++) {
+            MAP[3][i] = 1
+        }
+        for (let i = 0; i < GRID.ROWS - 1; i++) {
+            MAP[5][i] = 1
+        }
+        for (let i = 1; i < GRID.ROWS; i++) {
+            MAP[7][i] = 1
+        }
+        for (let i = 0; i < GRID.ROWS - 1; i++) {
+            MAP[9][i] = 1
+        }
+        for (let i = 1; i < GRID.ROWS; i++) {
+            MAP[11][i] = 1
+        }
+        for (let i = 0; i < GRID.ROWS - 1; i++) {
+            MAP[13][i] = 1
+        }
+        for (let i = 1; i < GRID.ROWS; i++) {
+            MAP[15][i] = 1
+        }
+        for (let i = 0; i < GRID.ROWS - 1; i++) {
+            MAP[17][i] = 1
+        }
+        for (let i = 1; i < GRID.ROWS - 1; i++) {
+            MAP[19][i] = 1
+        }
+    }
+
+    // DEBUG: RANDOMLY PLACE WALLS ON MAP
+    if (CONFIG.DEBUG.WALL.RANDOM) {
+        for (let i = 0; i < GRID.COLS; i++) {
+            for (let j = 0; j < GRID.ROWS; j++) {
+                let num = randomNumber(0, 100)
+                MAP[i][j] = (num > 60 ? 1 : 0)
+            }
+        }
+    }
+
+    // Prevent the MAP from placing a wall where the start and end are
+    if (MAP[START.x][START.y] === 1) MAP[START.x][START.y] = 0
+    if (MAP[END.x][END.y] === 1) MAP[END.x][END.y] = 0
 
     // Draw the BACKGROUND to the CANVAS
     if (CONFIG.DRAW.BACKGROUND) {
@@ -207,16 +264,15 @@ const INIT = () => {
 const AStar = (start: Vector2, end: Vector2) => {
     // Safe bounds to ensure no infinite loops occur
     let current_checks = 0;
-    const MAX_CHECKS = GRID.COLS * GRID.ROWS
+    const MAX_CHECKS = GRID.COLS * GRID.ROWS * 2
 
-    let previous_pivot = start.clone()
     let pivot = start.clone()
-    let pivots = new Map<Vector2, number>()
+    let explored_nodes = new Map<Vector2, number>()
     let path = new Map<Vector2, number>()
 
     const nodePreviouslyChecked = (pos: Vector2): boolean => {
         let exists = false;
-        Array.from(pivots.keys()).forEach((pivot) => {
+        Array.from(explored_nodes.keys()).forEach((pivot) => {
             if (pivot.equals(pos)) {
                 exists = true
             }
@@ -246,9 +302,6 @@ const AStar = (start: Vector2, end: Vector2) => {
                 // If the row is out of bounds, skip the check
                 if (!inBounds(row, 0, GRID.ROWS)) continue
 
-                // Skip cell if cell being checked is the pivot
-                if (col === pivot.x && row === pivot.y) continue;
-
                 // If the cell is a wall skip
                 if (MAP[col][row] == 1) continue;
 
@@ -259,7 +312,7 @@ const AStar = (start: Vector2, end: Vector2) => {
                 let dist = distance(new Vector2(col, row), end)
 
                 // Store the cell in a map
-                pivots.set(new Vector2(col, row), dist)
+                explored_nodes.set(new Vector2(col, row), dist)
             }
         }
 
@@ -267,7 +320,7 @@ const AStar = (start: Vector2, end: Vector2) => {
 
         let min_distance = Infinity
         let min_pivot = null
-        const sorted_entries = Array.from(pivots.entries()).sort((a, b) => a[1] - b[1])
+        const sorted_entries = Array.from(explored_nodes.entries()).sort((a, b) => a[1] - b[1])
         sorted_entries.forEach(([key, value]) => {
             if (nodeExistsOnPath(key)) return
             if (value < min_distance) {
@@ -279,7 +332,6 @@ const AStar = (start: Vector2, end: Vector2) => {
         if (!min_pivot) continue
         if (pivot.equals(end)) break
 
-        previous_pivot = pivot
         pivot = min_pivot
         path.set(min_pivot, min_distance)
     }
