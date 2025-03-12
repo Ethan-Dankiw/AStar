@@ -1,9 +1,9 @@
 
-// Define properties of the HTML canvas
 import {Vector2} from "./Vector2";
 import {distance, inBounds} from "./utils";
 import {drawLine, drawReact} from "./Canvas";
 
+// Define properties of the HTML canvas
 const CANVAS = {
     WIDTH: 800,  // Width of the canvas in pixels
     HEIGHT: 800, // Height of the canvas in pixels
@@ -19,6 +19,7 @@ const GRID = {
 }
 GRID.DIMENSIONS.update(GRID.COLS, GRID.ROWS);
 
+// Define properties of the GRID CELL
 const CELL = {
     WIDTH: CANVAS.WIDTH / GRID.COLS,
     HEIGHT: CANVAS.HEIGHT / GRID.ROWS,
@@ -26,6 +27,7 @@ const CELL = {
 }
 CELL.DIMENSIONS.update(CELL.WIDTH, CELL.HEIGHT);
 
+// Define global config values
 const CONFIG = {
     DRAW: {
         GRID: true,
@@ -58,14 +60,14 @@ const CONFIG = {
 // WALL = 1
 const MAP: number[][] = Array(GRID.COLS).fill(0).map(() => Array(GRID.ROWS).fill(0))
 
+// Function that returns a random position on the grid
 const randomGridPosition = (): Vector2 => {
     const min = new Vector2(0, 0)
     const max = new Vector2(GRID.COLS, GRID.ROWS)
     return Vector2.random(min, max).snap()
 }
 
-// const START = new Position(GRID.COLS / 2, GRID.ROWS / 2);
-// const END = new Position(0, 0);
+// Define the start and end position of the A* Algorithm
 const START = randomGridPosition()
 const END = randomGridPosition()
 
@@ -170,6 +172,7 @@ const INIT = () => {
     let pivot = START.clone()
 
     // Declare an array that stores the optimum path of the algorithm
+    // TODO: Use Collection/Map for the paths
     const PATH: Vector2[] = []
 
     // Safe bounds to ensure no infinite loops occur
@@ -181,6 +184,7 @@ const INIT = () => {
 
     // A* algorithm for pathfinding from start to finish
     while (current_checks < MAX_CHECKS) {
+        // TODO: Use Priority Queue
         let min_dist = Infinity
         let possible_pivot: Vector2 | null = null
 
