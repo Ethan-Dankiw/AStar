@@ -16,9 +16,9 @@ export const inBounds = (num: number, min: number, max: number) => {
 }
 
 export const randomNumber = (min: number, max: number) => {
-    //                       Math.random()  =>  has bounds { 0 <= x <= 1}
-    //                 Math.random() * max  =>  has bounds { 0 <= x <= max}
-    //         (Math.random() * max) + min  =>  has bounds { min <= x <= max + min}
-    // (Math.random() * (max - min)) + min  =>  has bounds { min <= x <= max}
+    //                       Math.random()  =>  has bounds { 0 <= x < 1}
+    //                 Math.random() * max  =>  has bounds { 0 <= x < max}
+    //         (Math.random() * max) + min  =>  has bounds { min <= x < max + min}
+    // (Math.random() * (max - min)) + min  =>  has bounds { min <= x < max}
     return Math.random() * (max - min) + min;
 }
