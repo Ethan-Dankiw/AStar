@@ -43,8 +43,8 @@ const CONFIG = {
 
     // DEBUG
     DEBUG: {
-        STARTING_POSITION: true,
-        ENDING_POSITION: true,
+        STARTING_POSITION: false,
+        ENDING_POSITION: false,
         MAP_WALL: false,
     },
 }
