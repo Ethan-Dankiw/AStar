@@ -1,0 +1,15 @@
+
+
+
+body {
+    min-height: 100vh;
+    min-width: 100vw;
+
+    margin: 0;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: #303030;
+}
