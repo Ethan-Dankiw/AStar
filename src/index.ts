@@ -35,7 +35,8 @@ const CONFIG = {
         A_STAR: {
             START: true,
             END: true,
-            PATH: true,
+            EXPLORED_PATH: true,
+            SHORTEST_PATH: true,
             COORDS: true,
         }
     },
@@ -46,8 +47,8 @@ const CONFIG = {
         ENDING_POSITION: true,
         WALL: {
             RANDOM: false,
-            ZIG_ZAG: true,
-            SEMI_BOX: false,
+            ZIG_ZAG: false,
+            SEMI_BOX: true,
         }
     },
 }
@@ -93,10 +94,10 @@ const INIT = () => {
     if (CONFIG.DEBUG.ENDING_POSITION) END.update(8, 12)
 
     if (CONFIG.DEBUG.WALL.SEMI_BOX) {
-        for (let i = 0; i < GRID.ROWS / 2 + 5; i++) {
-            MAP[5][i] = 1
+        for (let i = 3; i < GRID.ROWS / 2 + 5; i++) {
+            MAP[3][i] = 1
         }
-        for (let i = 5; i < GRID.ROWS / 2; i++) {
+        for (let i = 4; i < GRID.ROWS / 2; i++) {
             MAP[i][14] = 1
         }
         for (let i = 2; i < GRID.ROWS / 2 + 5; i++) {
@@ -187,7 +188,7 @@ const INIT = () => {
     }
 
     // Draw the END Position to the CANVAS
-    if (CONFIG.DRAW.A_STAR.START) {
+    if (CONFIG.DRAW.A_STAR.END) {
         ctx.save()
         ctx.fillStyle = '#986666'
         const top_left = Vector2.from(END).scale(CELL.DIMENSIONS)
@@ -233,13 +234,13 @@ const INIT = () => {
 
     ctx.save()
     ctx.font = `${1.5 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
+
     // A* algorithm for pathfinding from start to finish
     let nodes = AStar(START.clone(), END.clone())
     console.log(nodes)
 
-
-    Array.from(nodes.keys()).forEach(node => {
-        if (CONFIG.DRAW.A_STAR.PATH) {
+    nodes.forEach(node => {
+        if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
             ctx.save()
             ctx.fillStyle = 'rgba(142,142,142,0.1)'
             drawReact(ctx, node.clone().scale(CELL.DIMENSIONS), CELL.DIMENSIONS)
@@ -267,32 +268,35 @@ const AStar = (start: Vector2, end: Vector2) => {
     const MAX_CHECKS = GRID.COLS * GRID.ROWS * 2
 
     let pivot = start.clone()
-    let explored_nodes = new Map<Vector2, number>()
-    let path = new Map<Vector2, number>()
 
-    const nodePreviouslyChecked = (pos: Vector2): boolean => {
-        let exists = false;
-        Array.from(explored_nodes.keys()).forEach((pivot) => {
-            if (pivot.equals(pos)) {
-                exists = true
+    // Key: Cell position on Map
+    // Value: Distance from Node to End
+    const explored_nodes = new Map<Vector2, number>()
+    const path: Vector2[] = []
+
+    const existingNode = (node: Vector2) => {
+        let existing = false;
+        Array.from(explored_nodes.keys()).forEach(explored => {
+            if (explored.equals(node)) {
+                existing = true
             }
         })
-        return exists
-    }
-
-    const nodeExistsOnPath = (pos: Vector2): boolean => {
-        let exists = false;
-        Array.from(path.keys()).forEach((pivot) => {
-            if (pivot.equals(pos)) {
-                exists = true
-            }
-        })
-        return exists
+        return existing
     }
 
     // A* algorithm for pathfinding from start to finish
     while (current_checks < MAX_CHECKS) {
+        // If a pivot was found, but that pivot is the end goal.
+        // Stop the algorithm
+        if (pivot.equals(end)) break
+        current_checks++
+
         console.log(`Iteration: ${current_checks}, current pivot (${pivot.toString()})`)
+
+        // Variables to find minimum node
+        let min_distance = Infinity
+        let min_pivot = null
+
         // Check surrounding cells in a 3x3 grid around the pivot
         for (let col = pivot.x - 1; col <= pivot.x + 1; col++) {
             // If the column is out of bounds, skip the check
@@ -305,35 +309,34 @@ const AStar = (start: Vector2, end: Vector2) => {
                 // If the cell is a wall skip
                 if (MAP[col][row] == 1) continue;
 
+                // Store the current cell as a vector
+                let cell = new Vector2(col, row)
+
                 // Skip cell if the cell has already been checked
-                if (nodePreviouslyChecked(new Vector2(col, row))) continue
+                if (existingNode(cell)) continue
 
-                // Get the distance from checked cell to the end
-                let dist = distance(new Vector2(col, row), end)
+                // Get the distance from checked cell to end goal
+                const dist = distance(cell, end)
 
-                // Store the cell in a map
-                explored_nodes.set(new Vector2(col, row), dist)
+                // If there is node that is closer to the end
+                if (dist < min_distance) {
+                    // Use it as a pivot
+                    min_distance = dist
+                    min_pivot = cell
+                }
+
+                explored_nodes.set(cell, dist)
             }
         }
 
-        current_checks++
-
-        let min_distance = Infinity
-        let min_pivot = null
-        const sorted_entries = Array.from(explored_nodes.entries()).sort((a, b) => a[1] - b[1])
-        sorted_entries.forEach(([key, value]) => {
-            if (nodeExistsOnPath(key)) return
-            if (value < min_distance) {
-                min_distance = value
-                min_pivot = key
-            }
-        })
-
+        // If a node was not found to be closer to the end, skip
         if (!min_pivot) continue
-        if (pivot.equals(end)) break
 
+        // If a node was found that is closer to the end goal, set it as the next pivot
         pivot = min_pivot
-        path.set(min_pivot, min_distance)
+
+        // Store the node as part of the path
+        path.push(pivot)
     }
 
     return path
