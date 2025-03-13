@@ -33,8 +33,8 @@ export const CONFIG = {
             START: true,
             END: true,
             EXPLORED_PATH: true,
-            SHORTER_PATH: true,
-            LONGER_PATH: true,
+            TO_GOAL: false,
+            FROM_GOAL: true,
             COORDS: true,
         }
     },
@@ -45,8 +45,8 @@ export const CONFIG = {
         ENDING_POSITION: true,
         WALL: {
             RANDOM: false,
-            ZIG_ZAG: false,
-            SEMI_BOX: true,
+            ZIG_ZAG: true,
+            SEMI_BOX: false,
         }
     },
 }
@@ -222,11 +222,8 @@ const INIT = () => {
     const to_end = AStar(START.clone(), END.clone())
     const to_start = AStar(END.clone(), START.clone())
 
-    const shorter_path = (to_end.length <= to_start.length ? to_end : to_start)
-    const longer_path = (to_end.length <= to_start.length ? to_start : to_end)
-
-    if (CONFIG.DRAW.A_STAR.SHORTER_PATH) {
-        shorter_path.forEach(node => {
+    if (CONFIG.DRAW.A_STAR.TO_GOAL) {
+        to_end.forEach(node => {
             if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
                 ctx.save()
                 ctx.fillStyle = 'rgba(142,142,142,0.2)'
@@ -247,8 +244,8 @@ const INIT = () => {
         })
     }
 
-    if (CONFIG.DRAW.A_STAR.LONGER_PATH) {
-        longer_path.forEach(node => {
+    if (CONFIG.DRAW.A_STAR.FROM_GOAL) {
+        to_start.forEach(node => {
             if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
                 ctx.save()
                 ctx.fillStyle = 'rgba(142,142,142,0.1)'

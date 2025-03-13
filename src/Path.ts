@@ -6,7 +6,7 @@ import {GRID, MAP} from "./index";
 export const AStar = (start: Vector2, end: Vector2) => {
     // Safe bounds to ensure no infinite loops occur
     let current_checks = 0;
-    const MAX_CHECKS = GRID.COLS * GRID.ROWS * 2
+    const MAX_CHECKS = GRID.COLS * GRID.ROWS
 
     let pivot = start.clone()
 
@@ -30,8 +30,8 @@ export const AStar = (start: Vector2, end: Vector2) => {
         console.log(`Iteration: ${current_checks}, current pivot (${pivot.toString()})`)
 
         // Variables to find minimum node
-        let min_distance = Infinity
-        let min_pivot = null
+        let min_distance: number = Infinity
+        let min_pivot: Vector2 | null = null
 
         // Check surrounding cells in a 3x3 grid around the pivot
         for (let col = pivot.x - 1; col <= pivot.x + 1; col++) {
