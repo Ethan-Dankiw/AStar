@@ -1,33 +1,30 @@
 import {Vector2} from "./Vector2";
-import {distance, inBounds, randomNumber} from "./utils";
-import {drawLine, drawReact} from "./Canvas";
+import {randomGridPosition, randomNumber} from "./utils";
+import {drawLine, drawRectangle} from "./Canvas";
+import {AStar} from "./Path";
 
-// Define properties of the HTML canvas
-const CANVAS = {
+export const CANVAS = {
     WIDTH: 800,  // Width of the canvas in pixels
     HEIGHT: 800, // Height of the canvas in pixels
-    DIMENSIONS: new Vector2(),
+    DIMENSIONS: new Vector2(800, 800),
 }
-CANVAS.DIMENSIONS.update(CANVAS.WIDTH, CANVAS.HEIGHT);
 
 // Define properties of the GRID
-const GRID = {
+export const GRID = {
     COLS: 20,
     ROWS: 20,
-    DIMENSIONS: new Vector2(),
+    DIMENSIONS: new Vector2(20, 20),
 }
-GRID.DIMENSIONS.update(GRID.COLS, GRID.ROWS);
 
 // Define properties of the GRID CELL
-const CELL = {
+export const CELL = {
     WIDTH: CANVAS.WIDTH / GRID.COLS,
     HEIGHT: CANVAS.HEIGHT / GRID.ROWS,
-    DIMENSIONS: new Vector2(),
+    DIMENSIONS: new Vector2(CANVAS.WIDTH / GRID.COLS, CANVAS.HEIGHT / GRID.ROWS),
 }
-CELL.DIMENSIONS.update(CELL.WIDTH, CELL.HEIGHT);
 
 // Define global config values
-const CONFIG = {
+export const CONFIG = {
     DRAW: {
         GRID: false,
         BACKGROUND: true,
@@ -36,7 +33,8 @@ const CONFIG = {
             START: true,
             END: true,
             EXPLORED_PATH: true,
-            SHORTEST_PATH: true,
+            SHORTER_PATH: true,
+            LONGER_PATH: true,
             COORDS: true,
         }
     },
@@ -62,14 +60,7 @@ const CONFIG = {
 
 // EMPTY = 0
 // WALL = 1
-const MAP: number[][] = Array(GRID.COLS).fill(0).map(() => Array(GRID.ROWS).fill(0))
-
-// Function that returns a random position on the grid
-const randomGridPosition = (): Vector2 => {
-    const min = new Vector2(0, 0)
-    const max = new Vector2(GRID.COLS, GRID.ROWS)
-    return Vector2.random(min, max).snap()
-}
+export const MAP: number[][] = Array(GRID.COLS).fill(0).map(() => Array(GRID.ROWS).fill(0))
 
 // Define the start and end position of the A* Algorithm
 const START = randomGridPosition()
@@ -91,10 +82,10 @@ const INIT = () => {
 
     // DEBUG: MANUALLY SET START AND END POS
     if (CONFIG.DEBUG.STARTING_POSITION) START.update(0, 0)
-    if (CONFIG.DEBUG.ENDING_POSITION) END.update(8, 12)
+    if (CONFIG.DEBUG.ENDING_POSITION) END.update(12, 8)
 
     if (CONFIG.DEBUG.WALL.SEMI_BOX) {
-        for (let i = 3; i < GRID.ROWS / 2 + 5; i++) {
+        for (let i = 2; i < GRID.ROWS / 2 + 5; i++) {
             MAP[3][i] = 1
         }
         for (let i = 4; i < GRID.ROWS / 2; i++) {
@@ -158,7 +149,7 @@ const INIT = () => {
         ctx.save()
         ctx.fillStyle = '#404040'
         const top_left = new Vector2(0, 0)
-        drawReact(ctx, top_left, CANVAS.DIMENSIONS)
+        drawRectangle(ctx, top_left, CANVAS.DIMENSIONS)
         ctx.restore()
     }
 
@@ -171,7 +162,7 @@ const INIT = () => {
             cols.forEach((cell, row_idx) => {
                 if (cell !== 0) {
                     top_left.update(col_idx * CELL.WIDTH, row_idx * CELL.HEIGHT)
-                    drawReact(ctx, top_left, CELL.DIMENSIONS)
+                    drawRectangle(ctx, top_left, CELL.DIMENSIONS)
                 }
             })
         })
@@ -183,7 +174,7 @@ const INIT = () => {
         ctx.save()
         ctx.fillStyle = '#789866'
         const top_left = Vector2.from(START).scale(CELL.DIMENSIONS)
-        drawReact(ctx, top_left, CELL.DIMENSIONS)
+        drawRectangle(ctx, top_left, CELL.DIMENSIONS)
         ctx.restore()
     }
 
@@ -192,7 +183,7 @@ const INIT = () => {
         ctx.save()
         ctx.fillStyle = '#986666'
         const top_left = Vector2.from(END).scale(CELL.DIMENSIONS)
-        drawReact(ctx, top_left, CELL.DIMENSIONS)
+        drawRectangle(ctx, top_left, CELL.DIMENSIONS)
         ctx.restore()
     }
 
@@ -228,116 +219,68 @@ const INIT = () => {
     ctx.font = `${1.5 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
 
     // A* algorithm for pathfinding from start to finish
-    let path = AStar(START.clone(), END.clone())
-    path.forEach(node => {
-        if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
-            ctx.save()
-            ctx.fillStyle = 'rgba(142,142,142,0.1)'
-            drawReact(ctx, node.clone().scale(CELL.DIMENSIONS), CELL.DIMENSIONS)
-            ctx.restore()
-        }
+    const to_end = AStar(START.clone(), END.clone())
+    const to_start = AStar(END.clone(), START.clone())
 
-        // DEBUG: Display the cell position and distance to end
-        if (CONFIG.DRAW.A_STAR.COORDS) {
-            ctx.save()
-            ctx.font = `${1.7 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
-            ctx.fillStyle = '#bbbbbb'
-            let x_pos = node.x * CELL.WIDTH + (CELL.WIDTH / 10)
-            let y_pos = node.y * CELL.HEIGHT + (CELL.HEIGHT / 2)
-            ctx.fillText(`(${node.x}, ${node.y})`, x_pos, y_pos, CELL.WIDTH);
-            ctx.restore()
-        }
-    })
+    const shorter_path = (to_end.length <= to_start.length ? to_end : to_start)
+    const longer_path = (to_end.length <= to_start.length ? to_start : to_end)
 
-    ctx.restore()
-}
+    if (CONFIG.DRAW.A_STAR.SHORTER_PATH) {
+        shorter_path.forEach(node => {
+            if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
+                ctx.save()
+                ctx.fillStyle = 'rgba(142,142,142,0.2)'
+                drawRectangle(ctx, node.clone().scale(CELL.DIMENSIONS), CELL.DIMENSIONS)
+                ctx.restore()
+            }
 
-const AStar = (start: Vector2, end: Vector2) => {
-    // Safe bounds to ensure no infinite loops occur
-    let current_checks = 0;
-    const MAX_CHECKS = GRID.COLS * GRID.ROWS * 2
-
-    let pivot = start.clone()
-
-    // Key: Cell position on Map
-    // Value: Distance from Node to End
-    const explored_nodes = new Set<Vector2>()
-    const path: Vector2[] = []
-
-    const existingNode = (node: Vector2) => {
-        let existing = false;
-        Array.from(explored_nodes.keys()).forEach(explored => {
-            if (explored.equals(node)) {
-                existing = true
+            // DEBUG: Display the cell position and distance to end
+            if (CONFIG.DRAW.A_STAR.COORDS) {
+                ctx.save()
+                ctx.font = `${1.7 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
+                ctx.fillStyle = '#bbbbbb'
+                let x_pos = node.x * CELL.WIDTH + (CELL.WIDTH / 10)
+                let y_pos = node.y * CELL.HEIGHT + (CELL.HEIGHT / 2)
+                ctx.fillText(`(${node.x}, ${node.y})`, x_pos, y_pos, CELL.WIDTH);
+                ctx.restore()
             }
         })
-        return existing
     }
 
-    // A* algorithm for pathfinding from start to finish
-    while (current_checks < MAX_CHECKS) {
-        // If a pivot was found, but that pivot is the end goal.
-        // Stop the algorithm
-        if (pivot.equals(end)) break
-        current_checks++
-
-        console.log(`Iteration: ${current_checks}, current pivot (${pivot.toString()})`)
-
-        // Variables to find minimum node
-        let min_distance = Infinity
-        let min_pivot = null
-
-        // Check surrounding cells in a 3x3 grid around the pivot
-        for (let col = pivot.x - 1; col <= pivot.x + 1; col++) {
-            // If the column is out of bounds, skip the check
-            if (!inBounds(col, 0, GRID.COLS)) continue
-
-            for (let row = pivot.y - 1; row <= pivot.y + 1; row++) {
-                // If the row is out of bounds, skip the check
-                if (!inBounds(row, 0, GRID.ROWS)) continue
-
-                // If the cell is a wall skip
-                if (MAP[col][row] == 1) continue;
-
-                // Store the current cell as a vector
-                let cell = new Vector2(col, row)
-
-                // Skip cell if the cell has already been checked
-                if (existingNode(cell)) continue
-
-                // Get the distance from checked cell to end goal
-                const dist = distance(cell, end)
-
-                // If there is node that is closer to the end
-                if (dist < min_distance) {
-                    // Use it as a pivot
-                    min_distance = dist
-                    min_pivot = cell
-                }
-
-                // Record that the node has been explored
-                explored_nodes.add(cell)
+    if (CONFIG.DRAW.A_STAR.LONGER_PATH) {
+        longer_path.forEach(node => {
+            if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
+                ctx.save()
+                ctx.fillStyle = 'rgba(142,142,142,0.1)'
+                drawRectangle(ctx, node.clone().scale(CELL.DIMENSIONS), CELL.DIMENSIONS)
+                ctx.restore()
             }
-        }
 
-        // If a node was not found to be closer to the end, skip
-        if (!min_pivot) continue
-
-        // If a node was found that is closer to the end goal, set it as the next pivot
-        pivot = min_pivot
-
-        // Store the node as part of the path
-        path.push(pivot)
+            // DEBUG: Display the cell position and distance to end
+            if (CONFIG.DRAW.A_STAR.COORDS) {
+                ctx.save()
+                ctx.font = `${1.7 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
+                ctx.fillStyle = '#bbbbbb'
+                let x_pos = node.x * CELL.WIDTH + (CELL.WIDTH / 10)
+                let y_pos = node.y * CELL.HEIGHT + (CELL.HEIGHT / 2)
+                ctx.fillText(`(${node.x}, ${node.y})`, x_pos, y_pos, CELL.WIDTH);
+                ctx.restore()
+            }
+        })
     }
 
-    return path
+    ctx.restore()
 }
 
 (() => {
     try {
         INIT()
     } catch (e) {
-        alert("Unable to initialise game.")
         console.error(e)
+        if (e instanceof Error) {
+            alert(`Unable to initialise game.\n\nCause:\n${e.message}`)
+        } else {
+            alert(`Unable to initialise game.`)
+        }
     }
 })()

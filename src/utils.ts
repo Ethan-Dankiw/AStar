@@ -1,4 +1,5 @@
 import {Vector2} from "./Vector2";
+import {GRID} from "./index";
 
 export const distance = (from: Vector2, to: Vector2): number => {
     // Suppose...
@@ -21,4 +22,11 @@ export const randomNumber = (min: number, max: number) => {
     //         (Math.random() * max) + min  =>  has bounds { min <= x < max + min}
     // (Math.random() * (max - min)) + min  =>  has bounds { min <= x < max}
     return Math.random() * (max - min) + min;
+}
+
+// Function that returns a random position on the grid
+export const randomGridPosition = (): Vector2 => {
+    const min = new Vector2(0, 0)
+    const max = new Vector2(GRID.COLS, GRID.ROWS)
+    return Vector2.random(min, max).snap()
 }
