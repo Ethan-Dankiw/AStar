@@ -228,10 +228,8 @@ const INIT = () => {
     ctx.font = `${1.5 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
 
     // A* algorithm for pathfinding from start to finish
-    let nodes = AStar(START.clone(), END.clone())
-    console.log(nodes)
-
-    nodes.forEach(node => {
+    let path = AStar(START.clone(), END.clone())
+    path.forEach(node => {
         if (CONFIG.DRAW.A_STAR.EXPLORED_PATH) {
             ctx.save()
             ctx.fillStyle = 'rgba(142,142,142,0.1)'
@@ -263,7 +261,7 @@ const AStar = (start: Vector2, end: Vector2) => {
 
     // Key: Cell position on Map
     // Value: Distance from Node to End
-    const explored_nodes = new Map<Vector2, number>()
+    const explored_nodes = new Set<Vector2>()
     const path: Vector2[] = []
 
     const existingNode = (node: Vector2) => {
@@ -317,7 +315,8 @@ const AStar = (start: Vector2, end: Vector2) => {
                     min_pivot = cell
                 }
 
-                explored_nodes.set(cell, dist)
+                // Record that the node has been explored
+                explored_nodes.add(cell)
             }
         }
 
