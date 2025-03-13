@@ -224,14 +224,6 @@ const INIT = () => {
     //
     //
     // === A* Algorithm ==
-
-    // Declare a pivot to check for each iteration of the A* Algorithm
-    let pivot = START.clone()
-
-    // Declare an array that stores the optimum path of the algorithm
-    // TODO: Use Collection/Map for the paths
-    const PATH: Vector2[] = []
-
     ctx.save()
     ctx.font = `${1.5 * Math.floor(Math.sqrt(GRID.ROWS + GRID.COLS))}px Arial`
 
